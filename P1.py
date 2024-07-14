@@ -179,10 +179,13 @@ class Purga():
             for j in range(0,len(self.archivo)):
               if str(self.archivo[i][j]).startswith("<") :
                   self.archivo[i][j]=str(float(self.archivo[i][j][1:])/2)
-              if str(self.archivo[i][j]).startswith(">"):
-                  self.archivo[i][j]=str(float(self.archivo[i][j][1:])+0.1)
-            self.archivo[i] = self.archivo[i].astype(float)
-        display(self.archivo.iloc[:,25:])        
+                  
+        for i in self.archivo.iloc[:,25:].columns:
+          for j in range(0,len(self.archivo)):
+            if str(self.archivo[i][j]).startswith(">"):
+              self.archivo[i][j]=str(float(self.archivo[i][j][1:])+0.1)
+              
+            self.archivo[i] = self.archivo[i].astype(object)     
 
 Purga(DATA,EXCEL,metodo,limite,NR,EP,SHAPE_GE).base()
 
