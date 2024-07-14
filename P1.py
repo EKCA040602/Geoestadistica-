@@ -169,7 +169,20 @@ class Purga():
                     
                 elif rpta==1:
                     self.archivo[i] = self.archivo[i].apply(lambda x: None  if str(x)=="<1" else x) 
-    
+                    
+        for i in censura_copy.keys():
+          if censura.get(i)==100:
+            del censura[i]
+        
+        for i  in censura.keys():
+          if i in self.archivo.iloc[:,25:].columns:
+            for j in range(0,len(self.archivo)):
+              if str(self.archivo[i][j]).startswith("<") :
+                  self.archivo[i][j]=str(float(self.archivo[i][j][1:])/2)
+              if str(self.archivo[i][j]).startswith(">"):
+                  self.archivo[i][j]=str(float(self.archivo[i][j][1:])+0.1)
+            self.archivo[i] = self.archivo[i].astype(float)
+        display(self.archivo.iloc[:,25:])        
 
 Purga(DATA,EXCEL,metodo,limite,NR,EP,SHAPE_GE).base()
 
