@@ -185,7 +185,11 @@ class Purga():
             if str(self.archivo[i][j]).startswith(">"):
               self.archivo[i][j]=str(float(self.archivo[i][j][1:])+0.1)
               
-            self.archivo[i] = self.archivo[i].astype(object)     
+            self.archivo[i] = self.archivo[i].astype(object)  
+              
+        for i in self.archivo.iloc[:,25:].columns:
+          self.archivo[i] = self.archivo[i].astype(float)
 
-Purga(DATA,EXCEL,metodo,limite,NR,EP,SHAPE_GE).base()
-
+        return self.archivo
+        
+cruda =Purga(DATA,EXCEL,metodo,limite,NR,EP,SHAPE_GE).base()
