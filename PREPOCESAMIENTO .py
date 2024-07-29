@@ -191,5 +191,6 @@ class Purga():
           self.archivo[i] = self.archivo[i].astype(float)
 
         return self.archivo
-        
+
+#El resultado es una tabla con todos los datos que cumplen con la digestion ,censura y limite de deteccion
 cruda =Purga(DATA,EXCEL,metodo,limite,NR,EP,SHAPE_GE).base()
