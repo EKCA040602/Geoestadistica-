@@ -13,10 +13,11 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from shapely.geometry import LineString, Point, Polygon
 
-#Recuerda que primero debes identificar tus grupos.Discriminarlos.
+#Recuerda que primero debes identificar tus grupos.Discriminarlos.Y luego Ordenarlos
 categoria=["Cuenca Casma","Cuenca Nepeña","Cuenca Santa","Cuenca Huarmey"]
 DATA=pd.read_excel("/content/DATA_MADRE.xlsx")
 DATA=DATA[DATA["Cuenca"].isin(categoria)]
+DATA=DATA.sort_values(by="Cuenca")
 DATA=DATA.reset_index(drop=True)
 
 EXCEL=pd.read_excel("/content/VERIFICACION_DE_ELEMENTOS.xlsx")
