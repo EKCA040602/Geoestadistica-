@@ -1,7 +1,5 @@
 #En esta parte vamos a generar dos tablas por separado : uno con los datos reales y otro con los datos logaritmicos.
 from P1.py import cruda
-
-
 import statistics
 from statsmodels.stats.diagnostic import lilliefors
 from scipy.stats import shapiro,pearsonr
@@ -18,19 +16,12 @@ cruda_log
 
 class Unido():
   #Creamos un constructor en el que colocaremos los parametros a analizar
-
   def __init__(self,archivo:pd.DataFrame,cuenca,excel):
-
     self.archivo=archivo
-
     #Creamos una copia del archivo principal en el que analizaremos todo.
-
     self.df = self.archivo.copy()
-
     self.cuenca=cuenca
-
     self.excel=excel
-
   def base(self):
 
     #Discriminamos la data por CUENCAS  de modo que se me genera una tabla solo de los elementos que tiene esa litologia
