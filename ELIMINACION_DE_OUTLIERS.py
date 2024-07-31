@@ -236,4 +236,13 @@ class Normalizados():
 Normalizados(sin_outliers,categoria).base()
 
 #------------------------------------------------------------------------------------------
+#Aqui los las tablas mas importantes son : 
+#Depende :
+  #Si usamos logaritmos 
+      #Pues cruda_log
+  #Si no usamos logaritmos 
+      #cruda
+  #La tabla si o si importante y que debe estar es
+      #sin_outliers  .Ya que procesa para uno u otro.
+
 
