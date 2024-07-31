@@ -233,7 +233,7 @@ class Normalizados():
     self.conjunto=conjunto
     return self.conjunto
 
-Normalizados(sin_outliers,categoria).base()
+datos_normalizados=Normalizados(sin_outliers,categoria).base()
 
 #------------------------------------------------------------------------------------------
 #Aqui los las tablas mas importantes son : 
