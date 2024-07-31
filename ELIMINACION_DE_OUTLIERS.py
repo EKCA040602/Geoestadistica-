@@ -2,8 +2,14 @@
 from P1.py import cruda
 import statistics
 from statsmodels.stats.diagnostic import lilliefors
-from scipy.stats import shapiro,pearsonr
 from statsmodels.graphics.gofplots import qqplot
+from scipy.stats import shapiro,pearsonr, norm
+from sklearn.preprocessing import StandardScaler
+import scipy.stats as stats
+import plotly.graph_objects as go
+import ipywidgets as widgets
+
+#-------------------------------------------------------------------------
 
 def conversion(archivo):
   archivo_log=archivo.copy()
@@ -12,159 +18,222 @@ def conversion(archivo):
     archivo_log[i]=archivo_log[i].apply(math.log)
   return archivo_log
 cruda_log=conversion(cruda)
-cruda_log
 
-class Unido():
+#------------------------------------------------------------------------
+#Aqui vamos a analizar todas las categorias y todo estara en una  misma tabla
+class Outliers():
   #Creamos un constructor en el que colocaremos los parametros a analizar
-  def __init__(self,archivo:pd.DataFrame,cuenca,excel):
-    self.archivo=archivo
+
+  def __init__(self,archivo,categoria):
+
+    self.archi=archivo.copy()
+    self.categoria=categoria
+
     #Creamos una copia del archivo principal en el que analizaremos todo.
-    self.df = self.archivo.copy()
-    self.cuenca=cuenca
-    self.excel=excel
+
+    self.df = self.archi.copy()
+
   def base(self):
 
-    #Discriminamos la data por CUENCAS  de modo que se me genera una tabla solo de los elementos que tiene esa litologia
+    for cat in self.categoria:
 
-    self.df = self.archivo[self.archivo["Cuenca"] == self.cuenca].copy()
+      self.df = self.archi[self.archi["Cuenca"] == cat].copy()
 
     #EMPEZAMOS A REALIZAR LA ELIMINACION DE OUTLAYERS.
 
-    self.df =self.df.iloc[:,25:].copy()
+      self.df =self.df.iloc[:,25:].copy()
 
-    # display(self.df.describe())
+      for metal in self.df.columns:
+        for x in range(4):
+          long=len(self.df)*0.15
+          contador=0
 
-    for metal in self.df.columns:
-      n=1
-      cambio = True
-      column_name=f"{metal}_filtrado"
-      self.df[column_name]=self.df[metal]
+          dk=self.df[metal].describe().T
+          inferior = dk["25%"] - 1.5 * (dk["75%"] - dk["25%"])
+          superior = dk["75%"] + 1.5 * (dk["75%"] - dk["25%"])
 
-      long=len(self.df)*0.15
-      contador=0
-      for iteracion in range(5):
-        dk=self.df[column_name].describe().T
-        inferior = dk["25%"] - 1.5 * (dk["75%"] - dk["25%"])
-        superior = dk["75%"] + 1.5 * (dk["75%"] - dk["25%"])
+          for p,q in zip(self.df[metal].sort_values(ascending=False),self.df[metal].sort_values(ascending=True)):
+            if self.df[metal].isna().sum() >=long:
+              break
+            if p > superior:
+              self.archi.loc[self.df[self.df[metal]==p].index[0],metal]=None
+              self.df[metal][self.df[self.df[metal] == p].index[0]]=None
 
-        for p,q in zip(self.df[column_name].sort_values(ascending=False),self.df[column_name].sort_values(ascending=True)):
-          if self.df[column_name].isna().sum() >=long:
-            break          
-          if p > superior:
-            self.df[column_name][self.df[self.df[column_name] == p].index[0]]=None
-          if self.df[column_name].isna().sum() >=long:
-            break
-          if q <inferior:
-            self.df[column_name][self.df[self.df[column_name] == q].index[0]]=None
+            if self.df[metal].isna().sum() >=long:
+              break
+            if q <inferior:
+              self.archi.loc[self.df[self.df[metal]==q].index[0],metal]=None
+              self.df[metal][self.df[self.df[metal] == q].index[0]]=None
 
-    self.df=self.df.iloc[:,int(-1*(len(self.df.columns)/2)):]
-
-    print(f"Cantidad de datos TOTALES:{len(self.df)}")
-    print(f"Cantidad de datos como MINIMO:{len(self.df)*0.85}")
-    display(self.df.describe())
-
-    zscore={}
-
-#     #Realizamos un cicleo for en base a las dos columnas SIN OUTLAYERS
-
-    for i in (list(self.df.columns)):
-      #Generamos una copia en la variable elemento del Dataframe  a la variable elemento
-      elemento=self.df.copy()
-      #De dicha copia solo agarramos la columna que deseamos
-      elemento=elemento[i]
-      #Eliminamos los valores vacios
-      elemento=elemento.dropna()
-      #Ordenamos los valores
-      elemento=elemento.sort_values(ascending=True)
-      #Reseteamos el indice
-      elemento=elemento.reset_index(drop=True)
-      #Dentro del diccionario creamos una clave llamada Ejm Cd_Z que tendra valores convertidos a Zscore.
-      zscore[f"{i}_Z"]=[x for x  in list((elemento-elemento.mean())/elemento.std()) if not math.isnan(x)]
-
-    #Se asigna el valor de la variable a un atributo nombrado llamado self.zscore dentro del objeto actual
-
-    self.zscore=zscore
+    return self.archi
 
 
-#     #Para corroborar que el Zscore cumpla con los estandares de que la media sea 0 y la varianza 1 se crea otro diccionario que almacenara dichos elementos.
-    mevar={}
-    #Hacemos un cicleo del diccionario para hallar la media ,varianza y desviacion estandar de cada elemento.
-    for i in self.zscore:
-        media = statistics.mean(self.zscore.get(i))
-        varianza = statistics.variance(self.zscore.get(i))
-        desviacion_estandar = statistics.stdev(self.zscore.get(i))
-        mevar[i]=[media,varianza,desviacion_estandar]
+sin_outliers=Outliers(cruda_log,categoria).base()
 
-    mevar = pd.DataFrame(mevar, columns=mevar.keys())
+#------------------------------------------------------------------------------------
 
-    #Creamos dicha variable que sera como resultado al final de este codigo.
-    self.mevar=mevar
+#GRAFICOS 
 
-    normalizados=[]
+#Analisis de un elemento por litologia .Se muestra un grafico de como se comporta un elemento en las diferentes categorias.
 
-    #Realizamos el ciclo for para analizar lo mencionado anteriormente  con la prueba de KOLMOGOROV-SMIRNOF
+class Elemento_y_litologias():
+    def __init__(self,data,datasin):
+        self.data=data
+        self.datasin=datasin
+        self.cat=list(self.data["Cuenca"].unique())
 
-    for i in self.zscore:
+    def base(self):
+     
+      def graficos(elemento):
+        plt.style.use('ggplot')
+        fig, ax = plt.subplots(ncols=2,nrows=2,figsize=(15, 10))
+        sns.kdeplot(ax=ax[0,0],data=self.data,x=elemento,hue="Cuenca")
+        sns.boxplot(ax=ax[0,1],data=self.data,y=elemento,hue="Cuenca",gap=0.2)
+        ax[0,1].set_ylabel("")
+        ax[0,1].legend( loc="best")
+      
+        sns.kdeplot(ax=ax[1,0],data=self.datasin,x=elemento,hue="Cuenca")
+        sns.boxplot(ax=ax[1,1],data=self.datasin,y=elemento,hue="Cuenca",gap=0.2)
+        ax[1,1].set_ylabel("")
+        ax[1,1].legend( loc="best")
 
-      # La diferencia de usar el ajuste de LILLIEFORS es que condidiona a que la distribucion sea mas estricta para una distribucion normal .
-      # Sin el arreglo acepta data que visualmente podria ser una distribucion ,pero con el ajuste No .De modo que aqui para analisis no se usará
-      # dicho ajuste debido a que empiricamente si se acepta estos datos visualmente
+        fig.suptitle("COMPARACION DE ELEMENTO POR LITOLOGIAS",fontsize=20)
+        plt.tight_layout()
+        plt.show()
 
-      #ARREGLO DE LILIEFORS --------------------------------------------
+      widgets.interact(graficos,elemento=list(self.data.columns)[25:])
 
-      ksl_stat, ksl_p_value = lilliefors(self.zscore.get(i))
-      # print(f"{i}:{ksl_p_value}")
-      if ksl_p_value  > 0.05:
-            normalizados.append(f"{i}_NORMALIZADA")
+grafico1=Elemento_y_litologias(cruda_log,sin_outliers)
+
+grafico1.base()
+
+#--------------------------------------------------------------
+
+# Analisis de todos los elementos en una categoria o grupo.Aqui se presentan las tablas con y sin outliers .Se hace una comparativa 
+#de la data en Histograma ,Boxplot y QQplot
 
 
-    self.normalizados=normalizados
-# Aqui se realiza un grafico compuesto por un histograma,boxplot y qqplot.Se hace uso de la libreria seaborn(sns) y qqplot
+class Grafico_lith_and_all_elements():
+  def __init__(self,data,datasin):
+    scaler = StandardScaler()
+    self.columnas=list(data.columns[25:])
+    self.data=data
+    self.data [self.columnas] = scaler.fit_transform(self.data[self.columnas])
+    self.datasin=datasin
+    self.datasin[self.columnas] = scaler.fit_transform(self.datasin[self.columnas])
 
-    # Creacion de la figura que va a contener 6 axs  (3 para el cada elemento )
-    plt.style.use('ggplot')
-    fig, ax = plt.subplots(ncols=3, nrows=len(self.zscore.keys()), figsize=(20, 100))
    
-    f = 0
-    for i in self.zscore:
-          c = 0
-          #Se crea el histograma
-          sns.histplot(ax=ax[f,c],x=self.zscore.get(i),fill=True,stat="count",kde=True ,lw=4,bins=12,color="green")
-          ax[f, c].set_xlabel(i, fontsize=10, labelpad=5)
-          c=1
-          #Se crea el boxplot
-          sns.boxplot(ax=ax[f,c],y=self.zscore.get(i),color="lightblue")
-          f += 1
-    f=0
-    c=2
+
+  def base(self):
+    def grafico(categoria):
+      plt.style.use('ggplot')
+      fig,ax=plt.subplots(ncols=2,nrows=len(self.data.columns[25:]),figsize=(10,40))
+      f=0
+      for i in self.data.columns[25:]:
+        c=0
+
+        sns.histplot(ax=ax[f,c],x=self.data[self.data["Cuenca"]==categoria][i],kde=True,color="chocolate",stat="density",lw=3)
+        ax[f,c].set_ylabel(i[:2],fontsize=20)
+        ax[f,c].set_xlabel(" ")
+
+        np.random.seed(0)  # Fijar la semilla para reproducibilidad
+        datos = np.random.normal(0, 1, len(self.data[self.data["Cuenca"]==categoria]))
+        sns.kdeplot(ax=ax[f,c],x=datos,color="black",lw=3)
+
+        c=1
+
+        sns.histplot(ax=ax[f,c],x=self.datasin[self.datasin["Cuenca"]==categoria][i],kde=True,color="green",stat="density",lw=3)
+        sns.kdeplot(ax=ax[f,c],x=datos,color="black",lw=3)
+        ax[f,c].set_ylabel(" ")
+        ax[f,c].set_xlabel(" ")
+
+        f+=1
+
+      ax[0,0].set_title('HISTOGRAMA CON OUTLAYERS',fontsize=20)
+      ax[0,1].set_title('HISTOGRAMA SIN OUTLAYERS',fontsize=20)
+      plt.tight_layout()
+      plt.show()
+      print("-----------------------------------------------------------------")
+      plt.style.use('ggplot')
+      fig,ax=plt.subplots(ncols=2,nrows=len(self.data.columns[25:]),figsize=(10,40))
+      f=0
+      for i in self.data.columns[25:]:
+        c=0
+
+        sns.boxplot(ax=ax[f,c],x=self.data[self.data["Cuenca"]==categoria][i],color="chocolate",flierprops={"marker": "x"})
+        ax[f,c].set_ylabel(i[:2],fontsize=20)
+        ax[f,c].set_xlabel(" ")
+
+        c=1
+        sns.boxplot(ax=ax[f,c],x=self.datasin[self.datasin["Cuenca"]==categoria][i],color="green",flierprops={"marker": "x"})
+        ax[f,c].set_ylabel(" ")
+        ax[f,c].set_xlabel(" ")
+
+        f+=1
+
+      ax[0,0].set_title('BOXPLOT CON OUTLAYERS',fontsize=20)
+      ax[0,1].set_title('BOXPLOT SIN OUTLAYERS',fontsize=20)
+      plt.tight_layout()
+      plt.show()
+      print("-----------------------------------------------------------------")
+      fig,ax=plt.subplots(ncols=2,nrows=len(self.data.columns[25:]),figsize=(10,40))
+      f=0
+      for i in self.data.columns[25:]:
+        c=0
+
+        qqplot_data=qqplot(self.data[self.data["Cuenca"]==categoria][i],line="q",ax=ax[f,c]).gca().lines
+        ax[f,c].set_ylabel(i[:2],fontsize=20)
+        ax[f,c].set_xlabel(" ")
+
+        c=1
+        qqplot_data2=qqplot(self.datasin[self.datasin["Cuenca"]==categoria][i],line="q",ax=ax[f,c]).gca().lines
+        ax[f,c].set_ylabel(" ")
+        ax[f,c].set_xlabel(" ")
+
+        f+=1
+
+      ax[0,0].set_title('QQPLOT CON OUTLAYERS',fontsize=20)
+      ax[0,1].set_title('QQPLOT SIN OUTLAYERS',fontsize=20)
+      plt.tight_layout()
+      plt.show()
+
+    widgets.interact(grafico,categoria=categoria)
 
 
-    #Se hace la prueba shapiro
-    for i in self.zscore:
+Grafico_lith_and_all_elements(cruda_log,sin_outliers).base()
 
-      datos = self.zscore.get(i)
-      datos_array = np.array(datos)
+#----------------------------------------------------------------------------------------
+#Elementos normalizados para cada categoria 
 
-    #Se hace el grafico qqplot .Todo en una misma figura
-      qqplot_data=qqplot(datos_array,line="q",ax=ax[f,c]).gca().lines
-      f += 1
-    f=0
-    c=3
-    #Se ordena los graficos automaticamente
-    
-    plt.tight_layout()
-    #Se muestra el grafico
-    plt.show()
+class Normalizados():
+  def __init__(self,archivo,categoria):
 
-    self.normalizados=[x[:-14]for x in self.normalizados]
+    self.archivo=archivo.copy()
+    self.categoria=categoria
+    self.df = self.archivo.copy()
 
-    for x in self.df.columns:
+  def base(self):
 
-      #Si el elemento no esta dentro de la lista que contiene a elementos normalizados borra dicho columna del elemento de la tabla
-      if x not in self.normalizados:
-        self.df=self.df.drop(x,axis=1)
+    conjunto={}
+    for cat in self.categoria:
+      normalizados=[]
+      self.df = self.archivo[self.archivo["Cuenca"] == cat].copy()
 
-    return  self.df,self.mevar,self.normalizados
+      self.df =self.df.iloc[:,25:].copy()
 
+      for metal in self.df.columns:
+        limpio=self.df.dropna(subset=[metal]).copy()
+        
+        ksl_stat, ksl_p_value = lilliefors(limpio[metal])
+        if ksl_p_value  > 0.05:
+            normalizados.append(f"{metal}")
 
-a,b,c=Unido(cruda_log,"Cuenca Nepeña","EXCEL").base()
+      conjunto[cat]=normalizados
+
+    self.conjunto=conjunto
+    return self.conjunto
+
+Normalizados(sin_outliers,categoria).base()
+
+#------------------------------------------------------------------------------------------
+
