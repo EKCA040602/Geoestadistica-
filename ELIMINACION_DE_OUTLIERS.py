@@ -224,9 +224,14 @@ class Normalizados():
       for metal in self.df.columns:
         limpio=self.df.dropna(subset=[metal]).copy()
         
-        ksl_stat, ksl_p_value = lilliefors(limpio[metal])
-        if ksl_p_value  > 0.05:
-            normalizados.append(f"{metal}")
+        if len(limpio)<=50:
+          stat, p_value = shapiro(limpio)
+          if p_value  > 0.05:
+              normalizados.append(f"{metal[:2]}")
+        else:
+          ksl_stat, ksl_p_value = lilliefors(limpio[metal])
+          if ksl_p_value  > 0.05:
+              normalizados.append(f"{metal[:2]}")
 
       conjunto[cat]=normalizados
 
@@ -245,4 +250,5 @@ datos_normalizados=Normalizados(sin_outliers,categoria).base()
   #La tabla si o si importante y que debe estar es
       #sin_outliers  .Ya que procesa para uno u otro.
 
+#Ojito las pruebas se hacen respecto a shapiro y kolmogorov smirnof .Esto depende de la cantidad de datos >50 K-S
 
