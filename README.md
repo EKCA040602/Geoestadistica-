@@ -19,9 +19,14 @@ Existen 3 archivos por ahora.
   Resultado : Diccionario 
   
   CORRELACION :
-  
   Aqui se usa la tabla sin_outliers y el diccionario llamado datos_normalizados 
   Se observa la tabla de correlacion y uso de clustering jerarquico (supervisado)
   Resultado :Tabla de correlacion y dendograma 
   
+  Se hizo una comparativa de la data logatitmicos sin y con outliers .Con respecto a la correlacion y si.Eliminar los datos es efectivo puesto que genera una mejor 
+  correlacion 
+  entre las variables.
+  Asimismo se hizo una prueba de datos  reales sin y con outiliers .Y sucede lo mismo.En pocas palabras la eliminacion por ahora para el analisis es apropiado.Ya 
+  que brinda un mejor analisis entre los elementos.No obstante siempre hay que tenerlo presente.
 
+  
